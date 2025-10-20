@@ -11,6 +11,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSignup, setIsSignup] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -38,6 +39,35 @@ const Login = () => {
     }
   };
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Admin account created",
+        description: "You can now sign in with your credentials",
+      });
+      
+      setIsSignup(false);
+    } catch (error: any) {
+      toast({
+        title: "Signup failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background dark flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8 bg-card border-border">
@@ -51,7 +81,7 @@ const Login = () => {
           </p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={isSignup ? handleSignup : handleLogin} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium text-foreground">
               Admin Email
@@ -96,20 +126,34 @@ const Login = () => {
             className="w-full bg-primary hover:bg-primary/90"
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? (isSignup ? 'Creating Account...' : 'Signing in...') : (isSignup ? 'Create Admin Account' : 'Sign In')}
           </Button>
         </form>
+
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => setIsSignup(!isSignup)}
+            className="text-sm text-primary hover:underline"
+            disabled={loading}
+          >
+            {isSignup ? 'Already have an account? Sign in' : 'First time? Create admin account'}
+          </button>
+        </div>
 
         <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
           <div className="flex items-start gap-2">
             <Shield className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
             <div className="text-sm text-muted-foreground">
-              <p className="font-semibold text-foreground mb-1">Single Admin System</p>
-              <p>Admin credentials are configured in docker-compose.yml via environment variables:</p>
-              <ul className="mt-2 space-y-1 text-xs font-mono">
-                <li>• ADMIN_EMAIL</li>
-                <li>• ADMIN_PASSWORD</li>
-              </ul>
+              <p className="font-semibold text-foreground mb-1">
+                {isSignup ? 'Initial Setup' : 'Single Admin System'}
+              </p>
+              <p>
+                {isSignup 
+                  ? 'Create your admin account to start managing Docker containers. Use the credentials from your .env file.'
+                  : 'Use your admin credentials to access the Docker management interface.'
+                }
+              </p>
             </div>
           </div>
         </div>

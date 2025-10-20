@@ -30,14 +30,11 @@ docker-compose up -d --build
 ## 4. Create Admin Account
 
 1. Open browser: `http://your-server-ip:8080`
-2. Go to Settings page
-3. Click "Sign Up"
-4. Use the **exact credentials** from your `.env` file
-5. Submit to create admin account
-
-## 5. Login
-
-Return to login page and sign in with your credentials.
+2. Click "First time? Create admin account"
+3. Enter your credentials from the `.env` file
+4. Click "Create Admin Account"
+5. Once created, click "Already have an account? Sign in"
+6. Login with your credentials
 
 ---
 
