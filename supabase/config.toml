@@ -1,1 +1,10 @@
 project_id = "lyqqeokmoylqtwtikwzb"
+
+[functions.docker-api]
+verify_jwt = true
+
+[functions.docker-metrics]
+verify_jwt = true
+
+[functions.docker-logs]
+verify_jwt = true
