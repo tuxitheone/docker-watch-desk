@@ -1,15 +1,37 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Activity, Server, HardDrive, Network, Play, Square, RotateCw, AlertTriangle } from "lucide-react";
+import { Activity, Server, HardDrive, Network, Play, Square, RotateCw, AlertTriangle, Wifi, WifiOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useDockerMetrics } from "@/hooks/useDockerMetrics";
+import { useDockerContainers } from "@/hooks/useDockerContainers";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
-  const containers = [
-    { id: "abc123", name: "redis-prod", status: "running", cpu: "2.5%", memory: "128 MB", uptime: "3d 14h" },
-    { id: "def456", name: "postgres-main", status: "running", cpu: "5.2%", memory: "512 MB", uptime: "7d 2h" },
-    { id: "ghi789", name: "nginx-proxy", status: "running", cpu: "0.8%", memory: "64 MB", uptime: "12d 8h" },
-    { id: "jkl012", name: "api-backend", status: "stopped", cpu: "0%", memory: "0 MB", uptime: "-" },
-  ];
+  const { metrics, connected } = useDockerMetrics();
+  const { containers, loading, controlContainer } = useDockerContainers();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const getContainerMetrics = (containerId: string) => {
+    if (!metrics) return null;
+    return metrics.containers.find(c => c.id.startsWith(containerId.substring(0, 12)));
+  };
+
+  const runningCount = containers.filter(c => c.State === 'running').length;
+  const stoppedCount = containers.filter(c => c.State !== 'running').length;
 
   return (
     <div className="min-h-screen bg-background dark">
@@ -22,12 +44,24 @@ const Dashboard = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">Docker WebUI</h1>
-              <p className="text-sm text-muted-foreground">docker-node-01</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">docker-node-01</p>
+                {connected ? (
+                  <Wifi className="w-3 h-3 text-success" />
+                ) : (
+                  <WifiOff className="w-3 h-3 text-destructive" />
+                )}
+              </div>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => window.location.href = '/settings'}>
-            Settings
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/settings')}>
+              Settings
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -40,12 +74,17 @@ const Dashboard = () => {
                 <Activity className="w-5 h-5 text-primary" />
                 <h3 className="font-semibold text-card-foreground">CPU</h3>
               </div>
-              <span className="text-2xl font-bold text-primary">24%</span>
+              <span className="text-2xl font-bold text-primary">
+                {metrics?.host?.cpu?.usage || '0'}%
+              </span>
             </div>
             <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full" style={{ width: "24%" }} />
+              <div 
+                className="h-full bg-primary rounded-full transition-all duration-300" 
+                style={{ width: `${metrics?.host?.cpu?.usage || 0}%` }} 
+              />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">4 cores @ 3.2 GHz</p>
+            <p className="text-xs text-muted-foreground mt-2">Host CPU usage</p>
           </Card>
 
           <Card className="p-6 bg-card border-border">
@@ -54,41 +93,49 @@ const Dashboard = () => {
                 <Server className="w-5 h-5 text-accent" />
                 <h3 className="font-semibold text-card-foreground">Memory</h3>
               </div>
-              <span className="text-2xl font-bold text-accent">8.2 GB</span>
+              <span className="text-2xl font-bold text-accent">
+                {metrics?.host?.memory ? formatBytes(metrics.host.memory.used * 1024) : '0 MB'}
+              </span>
             </div>
             <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-accent rounded-full" style={{ width: "51%" }} />
+              <div 
+                className="h-full bg-accent rounded-full transition-all duration-300" 
+                style={{ width: `${metrics?.host?.memory?.usage || 0}%` }} 
+              />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">51% of 16 GB</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {metrics?.host?.memory?.usage || '0'}% of {metrics?.host?.memory ? formatBytes(metrics.host.memory.total * 1024) : '0 GB'}
+            </p>
           </Card>
 
           <Card className="p-6 bg-card border-border">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <HardDrive className="w-5 h-5 text-warning" />
-                <h3 className="font-semibold text-card-foreground">Disk</h3>
+                <h3 className="font-semibold text-card-foreground">Containers</h3>
               </div>
-              <span className="text-2xl font-bold text-warning">124 GB</span>
+              <span className="text-2xl font-bold text-warning">{containers.length}</span>
             </div>
-            <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-warning rounded-full" style={{ width: "62%" }} />
+            <div className="flex gap-2 text-xs text-muted-foreground">
+              <span className="text-success">{runningCount} running</span>
+              <span>•</span>
+              <span className="text-destructive">{stoppedCount} stopped</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">62% of 200 GB</p>
           </Card>
 
           <Card className="p-6 bg-card border-border">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Network className="w-5 h-5 text-success" />
-                <h3 className="font-semibold text-card-foreground">Network</h3>
+                <h3 className="font-semibold text-card-foreground">Uptime</h3>
               </div>
-              <span className="text-2xl font-bold text-success">2.4 MB/s</span>
+              <span className="text-2xl font-bold text-success">
+                {metrics?.host?.uptime ? Math.floor(metrics.host.uptime / 86400) + 'd' : '0d'}
+              </span>
             </div>
-            <div className="flex gap-2 text-xs text-muted-foreground">
-              <span>↓ 1.8 MB/s</span>
-              <span>•</span>
-              <span>↑ 0.6 MB/s</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              {metrics?.host?.uptime ? new Date(Date.now() - metrics.host.uptime * 1000).toLocaleString() : 'Loading...'}
+            </p>
           </Card>
         </div>
 
@@ -97,12 +144,12 @@ const Dashboard = () => {
           <h2 className="text-2xl font-bold text-foreground">Containers</h2>
           <div className="flex gap-4 text-sm">
             <span className="text-success flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-success" />
-              3 Running
+              <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+              {runningCount} Running
             </span>
             <span className="text-destructive flex items-center gap-1">
               <div className="w-2 h-2 rounded-full bg-destructive" />
-              1 Stopped
+              {stoppedCount} Stopped
             </span>
           </div>
         </div>
@@ -110,72 +157,129 @@ const Dashboard = () => {
         {/* Container List */}
         <Card className="bg-card border-border">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Name</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">ID</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">CPU</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Memory</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Uptime</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {containers.map((container) => (
-                  <tr key={container.id} className="border-b border-border hover:bg-secondary/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <Badge variant={container.status === "running" ? "default" : "destructive"} className={container.status === "running" ? "bg-success hover:bg-success" : ""}>
-                        {container.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 font-medium text-foreground">{container.name}</td>
-                    <td className="px-6 py-4 font-mono text-sm text-muted-foreground">{container.id}</td>
-                    <td className="px-6 py-4 text-sm text-foreground">{container.cpu}</td>
-                    <td className="px-6 py-4 text-sm text-foreground">{container.memory}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{container.uptime}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        {container.status === "running" ? (
-                          <>
-                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                              <Square className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                              <RotateCw className="w-4 h-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                            <Play className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </td>
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground">Loading containers...</div>
+            ) : containers.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                No containers found. Create one using Docker CLI and it will appear here automatically.
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Status</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Name</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Image</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">CPU</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Memory</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">Network</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-muted-foreground">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {containers.map((container) => {
+                    const containerMetrics = getContainerMetrics(container.Id);
+                    const isRunning = container.State === 'running';
+                    
+                    return (
+                      <tr key={container.Id} className="border-b border-border hover:bg-secondary/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <Badge 
+                            variant={isRunning ? "default" : "destructive"} 
+                            className={isRunning ? "bg-success hover:bg-success" : ""}
+                          >
+                            {container.State}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-medium text-foreground">{container.Names[0].replace(/^\//, '')}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{container.Id.substring(0, 12)}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-foreground">{container.Image}</td>
+                        <td className="px-6 py-4 text-sm text-foreground">
+                          {containerMetrics?.cpu || '0'}%
+                        </td>
+                        <td className="px-6 py-4 text-sm text-foreground">
+                          {containerMetrics?.memory ? formatBytes(containerMetrics.memory.used) : '0 MB'}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-muted-foreground">
+                          {containerMetrics?.network ? (
+                            <div>
+                              <div>↓ {formatBytes(containerMetrics.network.rx)}</div>
+                              <div>↑ {formatBytes(containerMetrics.network.tx)}</div>
+                            </div>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            {isRunning ? (
+                              <>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => controlContainer(container.Id, 'stop')}
+                                  title="Stop"
+                                >
+                                  <Square className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => controlContainer(container.Id, 'restart')}
+                                  title="Restart"
+                                >
+                                  <RotateCw className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-8 w-8 p-0"
+                                onClick={() => controlContainer(container.Id, 'start')}
+                                title="Start"
+                              >
+                                <Play className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => navigate(`/container/${container.Id}`)}
+                            >
+                              Details
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </Card>
 
-        {/* Active Alerts */}
-        <Card className="mt-8 p-6 bg-card border-border">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="w-5 h-5 text-warning" />
-            <h3 className="text-lg font-semibold text-foreground">Recent Alerts</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+        {/* Connection Status */}
+        {!connected && (
+          <Card className="mt-8 p-6 bg-card border-border border-warning">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-warning" />
               <div>
-                <p className="font-medium text-foreground">api-backend stopped</p>
-                <p className="text-sm text-muted-foreground">2 minutes ago</p>
+                <h3 className="text-lg font-semibold text-foreground">Metrics Disconnected</h3>
+                <p className="text-sm text-muted-foreground">
+                  Real-time metrics are temporarily unavailable. Attempting to reconnect...
+                </p>
               </div>
-              <Badge variant="destructive">Container Stopped</Badge>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
       </div>
     </div>
   );
