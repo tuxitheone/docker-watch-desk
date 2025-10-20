@@ -6,8 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: docker-webui
-    ports:
-      - "8080:8080"
+    network_mode: host
     environment:
       - TZ=${TZ:-Europe/Copenhagen}
     volumes:
@@ -16,9 +15,3 @@ services:
       # Mount proc for host metrics (read-only)
       - /proc:/host/proc:ro
     restart: unless-stopped
-    networks:
-      - docker-webui-network
-
-networks:
-  docker-webui-network:
-    driver: bridge
