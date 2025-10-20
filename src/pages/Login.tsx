@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Server, Lock, Mail } from "lucide-react";
+import { Server, Lock, Mail, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -10,45 +10,23 @@ import { useToast } from "@/components/ui/use-toast";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      if (isSignup) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              username: email.split('@')[0]
-            }
-          }
-        });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        toast({
-          title: "Account created!",
-          description: "You can now log in.",
-        });
-        setIsSignup(false);
-        setPassword("");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-
-        navigate("/dashboard");
-      }
+      navigate("/dashboard");
     } catch (error: any) {
       toast({
         title: "Authentication failed",
@@ -69,21 +47,21 @@ const Login = () => {
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Docker WebUI</h1>
           <p className="text-muted-foreground text-center">
-            {isSignup ? 'Create an account to get started' : 'Lightweight container monitoring and control'}
+            Admin access only
           </p>
         </div>
 
-        <form onSubmit={handleAuth} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium text-foreground">
-              Email
+              Admin Email
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@example.com"
+                placeholder="admin@docker-webui.local"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10 bg-secondary border-border"
@@ -118,29 +96,23 @@ const Login = () => {
             className="w-full bg-primary hover:bg-primary/90"
             disabled={loading}
           >
-            {loading ? 'Processing...' : (isSignup ? 'Sign Up' : 'Sign In')}
+            {loading ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>
 
-        <div className="mt-4 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignup(!isSignup);
-              setPassword("");
-            }}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            disabled={loading}
-          >
-            {isSignup ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-          </button>
+        <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
+          <div className="flex items-start gap-2">
+            <Shield className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-muted-foreground">
+              <p className="font-semibold text-foreground mb-1">Single Admin System</p>
+              <p>Admin credentials are configured in docker-compose.yml via environment variables:</p>
+              <ul className="mt-2 space-y-1 text-xs font-mono">
+                <li>• ADMIN_EMAIL</li>
+                <li>• ADMIN_PASSWORD</li>
+              </ul>
+            </div>
+          </div>
         </div>
-
-        {!isSignup && (
-          <p className="mt-6 text-xs text-center text-muted-foreground">
-            Secure authentication powered by Lovable Cloud
-          </p>
-        )}
       </Card>
     </div>
   );
