@@ -14,7 +14,138 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string
+          container_id: string | null
+          container_name: string | null
+          details: Json | null
+          id: string
+          timestamp: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          container_id?: string | null
+          container_name?: string | null
+          details?: Json | null
+          id?: string
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          container_id?: string | null
+          container_name?: string | null
+          details?: Json | null
+          id?: string
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      container_settings: {
+        Row: {
+          alert_on_stop: boolean | null
+          alerts_enabled: boolean | null
+          container_id: string
+          container_name: string
+          created_at: string | null
+          custom_webhook_url: string | null
+          debounce_interval: number | null
+          error_pattern: string | null
+          id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          alert_on_stop?: boolean | null
+          alerts_enabled?: boolean | null
+          container_id: string
+          container_name: string
+          created_at?: string | null
+          custom_webhook_url?: string | null
+          debounce_interval?: number | null
+          error_pattern?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          alert_on_stop?: boolean | null
+          alerts_enabled?: boolean | null
+          container_id?: string
+          container_name?: string
+          created_at?: string | null
+          custom_webhook_url?: string | null
+          debounce_interval?: number | null
+          error_pattern?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      global_settings: {
+        Row: {
+          alert_debounce_sec: number | null
+          created_at: string | null
+          default_error_regex: string | null
+          discord_webhook_url: string | null
+          id: string
+          metrics_interval: number | null
+          theme: string | null
+          timezone: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          alert_debounce_sec?: number | null
+          created_at?: string | null
+          default_error_regex?: string | null
+          discord_webhook_url?: string | null
+          id?: string
+          metrics_interval?: number | null
+          theme?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          alert_debounce_sec?: number | null
+          created_at?: string | null
+          default_error_regex?: string | null
+          discord_webhook_url?: string | null
+          id?: string
+          metrics_interval?: number | null
+          theme?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
